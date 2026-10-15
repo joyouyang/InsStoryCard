@@ -15,3 +15,7 @@ GitHub Pages 使用 main 分支根目录发布，更新 index.html 后自动重�
 ## brownout-stories.html
 
 第二版：模拟手机上的 Story 查看器，10 条 The Great Brownout Story 按一个人一天发的顺序排列，图片在 `assets/`。地址：https://joyouyang.github.io/InsStoryCard/brownout-stories.html
+
+## brownout-stories-2.html
+
+第二组 10 条：每条都把原图和贴纸放进同一画面，目标是朋友一眼看出贴纸来自这张照片。复用 `assets/`。地址：https://joyouyang.github.io/InsStoryCard/brownout-stories-2.html
