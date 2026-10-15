@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Great Brownout Stories</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap">
+<style>
+/* Layout: phone on the left running a story viewer; a notes column on the right follows the current story.
+   On a phone the viewer fills the screen and the notes open as a sheet. */
+:root{
+  --bg:#f2ede6;            /* warm putty, pulled from the blanket */
+  --fg:#241c15;
+  --muted:#6f6257;
+  --line:#dcd2c6;
+  --card:#fbf8f4;
+  --accent:#8a5a2b;        /* blanket brown */
+  --accent-ink:#ffffff;
+  --phone:#0b0a09;
+  --display:"Fraunces", Georgia, "Songti SC", serif;
+  --body:-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Noto Sans SC", sans-serif;
+  --hand:"Caveat", "Bradley Hand", cursive;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17130f; --fg:#efe7dd; --muted:#a79886; --line:#332a22; --card:#211b16; --accent:#d7a86e; --accent-ink:#1a120a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17130f; --fg:#efe7dd; --muted:#a79886; --line:#332a22; --card:#211b16; --accent:#d7a86e; --accent-ink:#1a120a; color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+
+.app{
+  min-height:100%;
+  display:grid;
+  grid-template-columns:minmax(0,420px) minmax(0,1fr);
+  gap:32px;
+  padding-block:28px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  max-width:1120px;
+  margin:0 auto;
+  align-items:start;
+}
+.phone-col{position:sticky;top:20px;display:flex;justify-content:center}
+
+/* ---------- phone ---------- */
+.phone-fit{width:393px;max-width:100%;height:852px}
+.phone{
+  width:393px;height:852px;transform-origin:top left;
+  background:var(--phone);
+  border-radius:54px;
+  padding:12px;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.45), 0 0 0 1.5px #2b2623 inset, 0 0 0 4px #141110;
+  position:relative;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.screen{
+  position:absolute;inset:12px;border-radius:44px;overflow:hidden;background:#000;color:#fff;
+  font-family:var(--body);
+  touch-action:manipulation;
+}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:35px;background:#000;border-radius:20px;z-index:40}
+.statusbar{position:absolute;top:14px;left:0;right:0;display:flex;justify-content:space-between;padding:0 30px;font-size:15px;font-weight:600;z-index:39;letter-spacing:.2px;pointer-events:none}
+.statusbar .icons{display:flex;gap:5px;align-items:center}
+.statusbar svg{display:block}
+
+.stage{position:absolute;inset:0;overflow:hidden;background:#111}
+.story{position:absolute;inset:0;display:none;overflow:hidden}
+.story.active{display:block}
+
+/* progress + header */
+.topchrome{position:absolute;left:0;right:0;top:0;z-index:30;padding:58px 10px 0;pointer-events:none;
+  background:linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,0) 100%);height:150px}
+.bars{display:flex;gap:3px}
+.bar{flex:1;height:2.5px;background:rgba(255,255,255,.35);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:#fff;border-radius:2px}
+.bar.done i{width:100%}
+.hdr{display:flex;align-items:center;gap:10px;margin-top:12px;pointer-events:auto}
+.hdr .av{width:34px;height:34px;border-radius:50%;background:#fff url(assets/s1.jpg) center/cover;flex:none;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
+.hdr .name{font-weight:600;font-size:14px;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.hdr .time{opacity:.75;font-size:14px;margin-left:2px}
+.hdr .spacer{flex:1}
+.hdr .x{opacity:.95;font-size:22px;font-weight:300;line-height:1;padding:4px 6px}
+.hdr .dots{letter-spacing:1px;padding:4px 6px}
+.hdr .ctrl{background:none;border:0;cursor:pointer}
+
+.bottomchrome{position:absolute;left:0;right:0;bottom:0;z-index:30;padding:0 14px 30px;display:flex;gap:14px;align-items:center;
+  background:linear-gradient(to top, rgba(0,0,0,.5), rgba(0,0,0,0));padding-top:40px;pointer-events:none}
+.reply{flex:1;border:1.5px solid rgba(255,255,255,.75);border-radius:26px;padding:12px 18px;font-size:15px;color:rgba(255,255,255,.9)}
+.bottomchrome svg{flex:none}
+
+.tapzone{position:absolute;top:0;bottom:90px;width:33%;z-index:10;cursor:pointer}
+.tapzone.l{left:0}.tapzone.r{right:0;width:67%}
+.paused .bar i{animation-play-state:paused}
+.pausehint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:31;opacity:0;transition:opacity .2s;pointer-events:none;
+  background:rgba(0,0,0,.45);border-radius:50%;width:54px;height:54px;display:grid;place-items:center}
+.paused .pausehint{opacity:1}
+
+/* ---------- Instagram sticker components ---------- */
+.ig{position:absolute;z-index:20;font-family:var(--body)}
+.ig-card{background:#fff;color:#111;border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.ig-pill{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#111;border-radius:999px;padding:8px 14px;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(0,0,0,.25);white-space:nowrap}
+.ig-pill.dark{background:rgba(0,0,0,.6);color:#fff;backdrop-filter:blur(8px)}
+.ig-pill .grad{background:linear-gradient(90deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* poll */
+.poll{width:250px;padding:16px 14px 12px;text-align:center}
+.poll .q{font-weight:800;font-size:20px;margin-bottom:12px;letter-spacing:.3px}
+.poll .opts{display:flex;border:1.5px solid #e2e2e2;border-radius:12px;overflow:hidden;position:relative}
+.poll .opt{flex:1;padding:14px 0;font-size:30px;position:relative;cursor:pointer;background:none;border:0}
+.poll .opt+.opt{border-left:1.5px solid #e2e2e2}
+.poll .opt .pct{position:absolute;left:0;right:0;bottom:4px;font-size:11px;font-weight:700;color:#444;opacity:0;transition:opacity .3s}
+.poll.voted .opt .pct{opacity:1}
+.poll .opt .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#d9f3e6;z-index:-1;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.poll.voted .opt{z-index:0;isolation:isolate}
+.poll .meta{font-size:11px;color:#888;margin-top:8px;font-weight:600}
+
+/* music */
+.music{display:flex;align-items:center;gap:10px;padding:8px 14px 8px 8px;border-radius:14px}
+.music .art{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,#3d2e22,#9d7a56);display:grid;place-items:center;flex:none;overflow:hidden}
+.music .art span{font-size:20px}
+.music .t{font-weight:800;font-size:14px;line-height:1.1;white-space:nowrap}
+.music .a{font-size:12px;color:#666;font-weight:600;margin-top:2px;white-space:nowrap}
+.music .eq{display:flex;gap:2px;align-items:flex-end;height:16px;margin-left:6px}
+.music .eq i{display:block;width:3px;background:#111;border-radius:2px;animation:eq 1s ease-in-out infinite}
+.music .eq i:nth-child(2){animation-delay:.2s}.music .eq i:nth-child(3){animation-delay:.4s}.music .eq i:nth-child(4){animation-delay:.1s}
+@keyframes eq{0%,100%{height:4px}50%{height:16px}}
+
+/* emoji slider */
+.slider{width:240px;padding:14px 16px 14px}
+.slider .q{font-weight:800;font-size:16px;text-align:center;margin-bottom:12px}
+.slider .track{height:8px;border-radius:8px;background:linear-gradient(90deg,#f9ce34,#ee2a7b,#6228d7);position:relative}
+.slider .knob{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);font-size:34px;transition:left 1.4s cubic-bezier(.3,.9,.2,1.1);filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+.slider .avg{font-size:11px;color:#888;margin-top:12px;text-align:center;font-weight:600}
+
+/* polaroid frame (Frames sticker) */
+.polaroid{background:#fff;padding:12px 12px 44px;box-shadow:0 14px 40px rgba(0,0,0,.45);position:relative}
+.polaroid img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#111}
+.polaroid .cap{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-family:var(--hand);font-size:26px;color:#2a2521;font-weight:700}
+.polaroid.undeveloped img{filter:brightness(.12) sepia(.6) contrast(1.2)}
+.polaroid.developing img{animation:develop 2.4s ease-out forwards}
+@keyframes develop{0%{filter:brightness(.12) sepia(.6) contrast(1.2)}60%{filter:brightness(.7) sepia(.3)}100%{filter:none}}
+.shakehint{position:absolute;inset:0;display:grid;place-items:center;z-index:21;color:#fff;font-weight:700;font-size:15px;text-align:center;pointer-events:none}
+.shakehint .ph{font-size:34px;animation:shake 1.4s ease-in-out infinite;display:block;margin-bottom:6px}
+@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(6deg)}}
+
+/* add yours */
+.addyours{padding:6px 14px 6px 6px;gap:10px}
+.addyours .stack{display:flex}
+.addyours .stack i{width:30px;height:30px;border-radius:50%;background:#eee url(assets/photo_sq.jpg) center/cover;border:2px solid #fff;margin-right:-8px}
+.addyours .stack i.plus{background:#111;color:#fff;display:grid;place-items:center;font-style:normal;font-size:18px;font-weight:300}
+.addyours .lbl{display:flex;flex-direction:column;line-height:1.1}
+.addyours .lbl small{font-size:10px;color:#777;font-weight:700;letter-spacing:.3px}
+
+/* reveal */
+.reveal{width:230px;padding:18px 16px;text-align:center}
+.reveal .eye{font-size:28px}
+.reveal .t{font-weight:800;font-size:16px;margin-top:4px}
+.reveal .s{font-size:12px;color:#777;margin-top:4px;font-weight:600}
+.reveal button{margin-top:12px;background:#111;color:#fff;border:0;border-radius:999px;padding:9px 18px;font-weight:700;font-size:14px;cursor:pointer}
+
+/* gif stickers */
+.gif{position:absolute;z-index:20;font-weight:900;font-family:var(--display);color:#fff;text-shadow:0 2px 0 #000,0 0 14px rgba(0,0,0,.4)}
+.gif.q{font-size:64px;animation:bob 1.2s ease-in-out infinite}
+.gif.q2{font-size:40px;animation:bob 1.2s ease-in-out .4s infinite reverse}
+.gif.spark{font-size:30px;animation:twinkle 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-14px) rotate(6deg)}}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.7) rotate(0)}50%{opacity:1;transform:scale(1.15) rotate(20deg)}}
+
+/* sticker as a photo sticker (white border like IG photo stickers) */
+.ps{position:absolute;z-index:20;background:#fff;padding:6px;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.4)}
+.ps img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px}
+
+/* ---------- per-story scenes ---------- */
+.full{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.08)}
+
+/* S2: Cookmoji screen recording */
+.rec{position:absolute;inset:0;background:#0f0d0b;overflow:hidden}
+.rec .topbar{display:none;position:absolute;top:64px;left:0;right:0;text-align:center;font-weight:700;font-size:15px;opacity:.9;color:#f2ece4}
+.rec .photo{position:absolute;left:50%;top:150px;width:150px;aspect-ratio:9/16;transform:translateX(-50%);border-radius:14px;overflow:hidden;animation:recPhoto 9s linear infinite}
+.rec .photo img{width:100%;height:100%;object-fit:cover;display:block}
+@keyframes recPhoto{0%{transform:translateX(-50%) scale(1);opacity:1;top:150px}18%{transform:translateX(-50%) scale(1);top:150px}30%{transform:translateX(-50%) scale(.45);top:76px;opacity:1}100%{transform:translateX(-50%) scale(.45);top:76px;opacity:1}}
+.rec .scribble{position:absolute;left:50%;top:310px;transform:translateX(-50%);width:220px;height:220px;opacity:0;animation:recScribble 9s linear infinite}
+@keyframes recScribble{0%,28%{opacity:0}32%{opacity:1}58%{opacity:1}62%{opacity:0}100%{opacity:0}}
+.rec .scribble path{fill:none;stroke:#d7a86e;stroke-width:3;stroke-linecap:round;stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 9s linear infinite}
+@keyframes draw{0%,30%{stroke-dashoffset:1400}58%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
+.rec .out{position:absolute;left:50%;top:300px;width:230px;transform:translateX(-50%) scale(.2);opacity:0;animation:recOut 9s cubic-bezier(.2,.9,.3,1.2) infinite}
+.rec .out img{width:100%;display:block;border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+@keyframes recOut{0%,60%{opacity:0;transform:translateX(-50%) scale(.2)}66%{opacity:1;transform:translateX(-50%) scale(1.05)}70%{transform:translateX(-50%) scale(1)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+.rec .more{position:absolute;left:50%;top:560px;transform:translateX(-50%);display:flex;gap:10px;opacity:0;animation:recMore 9s ease-out infinite}
+.rec .more img{width:84px;border-radius:12px;display:block}
+@keyframes recMore{0%,72%{opacity:0;transform:translateX(-50%) translateY(20px)}80%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:1;transform:translateX(-50%) translateY(0)}}
+.rec .status{position:absolute;left:0;right:0;top:126px;text-align:center;font-size:13px;color:#b9a994;font-weight:600;letter-spacing:.4px}
+.rec .status span{position:absolute;left:0;right:0;opacity:0;animation:recStatus 9s linear infinite}
+.rec .status span:nth-child(1){animation-delay:0s}.rec .status span:nth-child(2){animation-delay:3s}.rec .status span:nth-child(3){animation-delay:6s}
+@keyframes recStatus{0%{opacity:0}5%{opacity:1}30%{opacity:1}34%{opacity:0}100%{opacity:0}}
+
+/* S3 layout */
+.layout2{position:absolute;inset:0;display:grid;grid-template-rows:1fr 1fr;gap:3px;background:#fff}
+.layout2 .cell{position:relative;overflow:hidden;background:#111}
+.layout2 img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* S5 create mode */
+.create{position:absolute;inset:0;background:linear-gradient(160deg,#e9c9a0 0%,#b98656 45%,#4a2f1b 100%)}
+
+/* S6 chat */
+.chat{position:absolute;inset:0;background:#fff;color:#111;display:flex;flex-direction:column}
+.chat .ctop{height:118px;background:#f6f6f6;border-bottom:1px solid #ddd;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;flex-direction:column;align-items:center}
+.chat .ctop .cav{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#9bb0c4,#5f7489);margin-bottom:4px}
+.chat .ctop .cname{font-size:11px}
+.chat .msgs{flex:1;padding:14px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.chat .m{max-width:72%;padding:9px 13px;border-radius:18px;font-size:16px;line-height:1.3}
+.chat .in{background:#e9e9eb;align-self:flex-start;border-bottom-left-radius:5px}
+.chat .out{background:#2d8cff;color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
+.chat .stk{align-self:flex-end;width:140px;border-radius:12px;display:block;background:none;padding:0}
+.chat .stk img{width:100%;display:block;border-radius:12px}
+.chat .read{font-size:11px;color:#8a8a8e;align-self:flex-end;margin-top:-2px;margin-right:4px}
+.chat .cbar{height:92px;border-top:1px solid #ddd;background:#f6f6f6;display:flex;align-items:flex-start;padding:10px 12px;gap:10px}
+.chat .cbar .inp{flex:1;border:1px solid #ccc;border-radius:18px;height:34px;background:#fff}
+.chat .cbar .plus{width:34px;height:34px;border-radius:50%;background:#e2e2e4}
+.chat .m,.chat .stk,.chat .read{opacity:0;animation:popin .4s ease-out forwards}
+.chat .m:nth-child(1){animation-delay:.3s}.chat .stk:nth-child(2){animation-delay:1.4s}.chat .read:nth-child(3){animation-delay:1.9s}
+.chat .m:nth-child(4){animation-delay:2.8s}.chat .stk:nth-child(5){animation-delay:4s}.chat .read:nth-child(6){animation-delay:4.5s}
+@keyframes popin{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+
+/* S8 reveal */
+.blurbg{position:absolute;inset:-30px;background:url(assets/s5.jpg) center/cover;filter:blur(28px) saturate(1.2);transition:filter 1.2s ease}
+.revealed .blurbg{filter:blur(0)}
+.revealed .reveal{display:none}
+
+/* S9 hands-free: slow drift as a stand-in for live video */
+.hf{position:absolute;inset:0;overflow:hidden}
+.hf img{position:absolute;inset:-6%;width:112%;height:112%;object-fit:cover;animation:drift 10s ease-in-out infinite alternate}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-2.5%,1.5%) scale(1.06)}}
+.live{position:absolute;z-index:12;top:150px;left:16px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;opacity:.9;color:#fff}
+.live i{width:8px;height:8px;border-radius:50%;background:#ff3b30;animation:blink 1s steps(2) infinite}
+@keyframes blink{to{opacity:.2}}
+
+/* S10 share card */
+.share{position:absolute;inset:0;background:#1d1510;overflow:hidden}
+.share .grain{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 0%,rgba(215,168,110,.28),transparent 60%)}
+.share .orig{position:absolute;left:28px;top:170px;width:150px;aspect-ratio:9/16;border-radius:16px;overflow:hidden;transform:rotate(-5deg);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.share .orig img{width:100%;height:100%;object-fit:cover;display:block}
+.share .arrow{position:absolute;left:170px;top:300px;width:70px;height:60px;transform:rotate(-10deg)}
+.share .arrow path{fill:none;stroke:#d7a86e;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.share .fan{position:absolute;right:16px;top:150px;width:200px;height:360px}
+.share .fan .ps{width:150px;left:auto}
+.share .fan .ps:nth-child(1){right:30px;top:0;transform:rotate(7deg)}
+.share .fan .ps:nth-child(2){right:60px;top:130px;transform:rotate(-6deg)}
+.share .fan .ps:nth-child(3){right:10px;top:255px;transform:rotate(4deg)}
+.share .strip{position:absolute;left:0;right:0;bottom:200px;display:flex;justify-content:center;gap:8px}
+.share .strip img{width:56px;border-radius:10px;opacity:.9}
+.share .brand{position:absolute;left:0;right:0;bottom:155px;text-align:center;font-family:var(--display);font-weight:700;font-size:22px;color:#d7a86e;letter-spacing:.5px}
+
+/* ---------- notes column ---------- */
+.notes{min-width:0;display:flex;flex-direction:column;gap:18px}
+.notes h1{font-family:var(--display);font-weight:500;font-size:clamp(26px,3vw,36px);line-height:1.1;margin:0;text-wrap:balance}
+.notes .lede{color:var(--muted);margin:6px 0 0;font-size:15px;line-height:1.55;max-width:60ch}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.list button{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;cursor:pointer;display:flex;gap:10px;align-items:center;min-width:0}
+.list button .n{font-family:var(--display);font-weight:700;font-size:18px;color:var(--accent);width:24px;flex:none}
+.list button .lb{font-size:13px;line-height:1.25;min-width:0}
+.list button .lb small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.list button[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.list button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.detail{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;min-width:0}
+.detail .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.detail h2{font-family:var(--display);font-weight:700;font-size:24px;margin:4px 0 12px;line-height:1.15}
+.detail dl{display:grid;grid-template-columns:5.5em 1fr;gap:8px 14px;margin:0;font-size:14px;line-height:1.55}
+.detail dt{color:var(--muted);font-weight:600}
+.detail dd{margin:0;min-width:0}
+.detail .chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:var(--bg)}
+.chip.form{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.detail .why{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);font-size:14px;line-height:1.6;color:var(--fg)}
+.foot{color:var(--muted);font-size:12px;line-height:1.6;max-width:62ch}
+.foot code{font-size:12px}
+
+.infobtn{display:none}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;gap:16px;padding-block:12px}
+  .phone-col{position:static}
+  .notes h1{font-size:24px}
+}
+@media (prefers-reduced-motion: reduce){
+  .rec *,.chat *,.hf img,.gif,.music .eq i,.shakehint .ph{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="phone-col">
+    <div class="phone-fit" id="fit">
+    <div class="phone" id="phone">
+      <div class="screen" id="screen">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span class="icons">
+          <svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx=".6"/><rect x="5" y="5.5" width="3" height="6.5" rx=".6"/><rect x="10" y="3" width="3" height="9" rx=".6"/><rect x="15" y="0" width="3" height="12" rx=".6"/></svg>
+          <svg width="27" height="13" viewBox="0 0 27 13" fill="none" stroke="#fff"><rect x=".5" y=".5" width="22" height="12" rx="3.5"/><rect x="2.5" y="2.5" width="18" height="8" rx="1.8" fill="#fff" stroke="none"/><path d="M24.5 4.5v4a2 2 0 0 0 0-4z" fill="#fff" stroke="none"/></svg>
+        </span></div>
+
+        <div class="stage" id="stage"></div>
+
+        <div class="topchrome">
+          <div class="bars" id="bars"></div>
+          <div class="hdr">
+            <div class="av"></div><span class="name">joyouyang</span><span class="time" id="time">2h</span>
+            <span class="spacer"></span>
+            <button class="ctrl dots" aria-label="更多">···</button>
+            <button class="ctrl x" aria-label="关闭">×</button>
+          </div>
+        </div>
+        <div class="pausehint"><svg width="22" height="22" viewBox="0 0 22 22" fill="#fff"><rect x="4" y="3" width="5" height="16" rx="1.5"/><rect x="13" y="3" width="5" height="16" rx="1.5"/></svg></div>
+        <div class="tapzone l" id="tapL" aria-label="上一个"></div>
+        <div class="tapzone r" id="tapR" aria-label="下一个"></div>
+
+        <div class="bottomchrome">
+          <div class="reply">Send message</div>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.5-9.3C1.1 8.3 3.4 4.5 7 4.5c2 0 3.5 1.1 5 3 1.5-1.9 3-3 5-3 3.6 0 5.9 3.8 4.5 7.2C19.5 16.4 12 21 12 21z"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div>
+      <h1>The Great Brownout · 10 条 Story</h1>
+      <p class="lede">一张裹毯子的照片，Cookmoji 生成的一套贴纸，按一个人一天发的 10 条 Story 排列。点手机右侧前进、左侧后退、长按暂停；每条 Story 的发布方式和用到的小组件在下方同步说明。</p>
+    </div>
+    <div class="list" id="list" role="tablist"></div>
+    <div class="detail" id="detail"></div>
+    <p class="foot">贴纸只挑对该条叙事有用的，一次不超过三张。文字只留小组件自带的那几个词。没用的功能也是决定：滤镜、倒计时、问答、测验都没有放进来，理由写在各条说明里。「Hands-free」那条需要你真人补拍，demo 里用原图代替；「Video」那条是 Cookmoji 制作过程的屏幕录制，demo 用动画模拟。互动只在页面内模拟，不会发到 Instagram。</p>
+  </div>
+</div>
+
+<!-- ---------- story scenes ---------- -->
+<template id="s1">
+  <img class="full" src="assets/photo.jpg" alt="原图：裹着棕色毯子">
+  <div class="ig ig-card poll" style="left:50%;top:560px;transform:translateX(-50%)" data-poll>
+    <div class="q">?</div>
+    <div class="opts">
+      <button class="opt" data-pct="38"><span class="fill"></span>🥔<span class="pct">38%</span></button>
+      <button class="opt" data-pct="62"><span class="fill"></span>👻<span class="pct">62%</span></button>
+    </div>
+    <div class="meta">点一下投票</div>
+  </div>
+</template>
+
+<template id="s2">
+  <div class="rec">
+    <div class="topbar">Cookmoji</div>
+    <div class="status"><span>Reading the photo</span><span>Drawing</span><span>Done</span></div>
+    <div class="photo"><img src="assets/photo.jpg" alt=""></div>
+    <svg class="scribble" viewBox="0 0 220 220"><path d="M40 150 C 30 90, 70 40, 110 45 C 160 50, 190 90, 180 140 C 170 190, 110 200, 70 180 C 45 165, 50 120, 80 110 C 110 100, 150 120, 140 150 C 130 175, 95 170, 95 145"/></svg>
+    <div class="out"><img src="assets/s1.jpg" alt="贴纸：Give me a second."></div>
+    <div class="more"><img src="assets/s2.jpg" alt=""><img src="assets/s3.jpg" alt=""><img src="assets/s6.jpg" alt=""></div>
+  </div>
+  <div class="ig ig-card music" style="left:50%;top:160px;transform:translateX(-50%)">
+    <div class="art"><span>♪</span></div>
+    <div><div class="t">Hide and Seek</div><div class="a">Imogen Heap</div></div>
+    <div class="eq"><i></i><i></i><i></i><i></i></div>
+  </div>
+</template>
+
+<template id="s3">
+  <div class="layout2">
+    <div class="cell"><img src="assets/photo.jpg" alt="原图" style="object-position:50% 30%"></div>
+    <div class="cell"><img src="assets/s2.jpg" alt="贴纸：I'm staying right here."></div>
+  </div>
+  <div class="ig ig-card slider" style="left:50%;top:50%;transform:translate(-50%,-50%)" data-slider>
+    <div class="q">🫠</div>
+    <div class="track"><span class="knob">🫠</span></div>
+    <div class="avg">平均 86%</div>
+  </div>
+</template>
+
+<template id="s4">
+  <img class="full" src="assets/photo.jpg" alt="" style="filter:blur(18px) brightness(.5);transform:scale(1.15)">
+  <div class="ig polaroid undeveloped" data-frame style="left:50%;top:190px;width:270px;transform:translateX(-50%) rotate(-3deg)">
+    <img src="assets/photo_sq.jpg" alt="原图">
+    <div class="cap">oct 2026</div>
+    <div class="shakehint"><div><span class="ph">📳</span>Shake to reveal</div></div>
+  </div>
+  <div class="ps" style="width:140px;right:22px;top:520px;transform:rotate(6deg)"><img src="assets/s3.jpg" alt="贴纸：Not happening."></div>
+</template>
+
+<template id="s5">
+  <div class="create"></div>
+  <div class="ps" style="width:260px;left:50%;top:230px;transform:translateX(-50%) rotate(-2deg)"><img src="assets/s4.jpg" alt="贴纸：That means a lot."></div>
+  <div class="ig ig-pill addyours" style="left:50%;top:560px;transform:translateX(-50%)">
+    <span class="stack"><i></i><i class="plus">+</i></span>
+    <span class="lbl"><small>ADD YOURS</small>blanket era</span>
+  </div>
+</template>
+
+<template id="s6">
+  <div class="chat">
+    <div class="ctop"><div class="cav"></div><div class="cname">Bestie ›</div></div>
+    <div class="msgs">
+      <div class="m in">dinner tonight?</div>
+      <div class="stk"><img src="assets/s3.jpg" alt="贴纸：Not happening."></div>
+      <div class="read">Read</div>
+      <div class="m in">pleaseee 🥺</div>
+      <div class="stk"><img src="assets/s2.jpg" alt="贴纸：I'm staying right here."></div>
+      <div class="read">Delivered</div>
+    </div>
+    <div class="cbar"><div class="plus"></div><div class="inp"></div></div>
+  </div>
+</template>
+
+<template id="s7">
+  <img class="full" src="assets/photo.jpg" alt="" style="filter:brightness(.55) saturate(.8);transform:scale(1.08)">
+  <div class="ps" style="width:250px;left:50%;top:235px;transform:translateX(-50%) rotate(2deg)"><img src="assets/s6.jpg" alt="贴纸：What's going on?"></div>
+  <span class="gif q" style="left:34px;top:200px">?</span>
+  <span class="gif q2" style="right:40px;top:260px">?</span>
+  <span class="gif spark" style="left:70px;top:520px">✦</span>
+  <span class="gif spark" style="right:60px;top:170px;animation-delay:.6s">✦</span>
+  <div class="ig ig-pill" style="left:50%;top:590px;transform:translateX(-50%) rotate(-3deg)"><span class="grad">@cookmoji.app</span></div>
+</template>
+
+<template id="s8">
+  <div class="blurbg"></div>
+  <div class="ig ig-card reveal" style="left:50%;top:50%;transform:translate(-50%,-50%)" data-reveal>
+    <div class="eye">👁️‍🗨️</div>
+    <div class="t">Reveal</div>
+    <div class="s">发一条消息就能看</div>
+    <button type="button">Send message</button>
+  </div>
+</template>
+
+<template id="s9">
+  <div class="hf"><img src="assets/photo.jpg" alt="原图（代替 Hands-free 实拍）"></div>
+  <div class="live"><i></i>0:07</div>
+  <div class="ps" style="width:130px;right:18px;top:170px;transform:rotate(5deg)"><img src="assets/s2.jpg" alt="贴纸：I'm staying right here."></div>
+  <div class="ig ig-pill" style="left:50%;top:600px;transform:translateX(-50%)"><svg width="16" height="16" viewBox="0 0 24 24" fill="#111"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>Shanghai</div>
+</template>
+
+<template id="s10">
+  <div class="share">
+    <div class="grain"></div>
+    <div class="orig"><img src="assets/photo.jpg" alt="原图"></div>
+    <svg class="arrow" viewBox="0 0 70 60"><path d="M4 48 C 20 20, 40 14, 62 16"/><path d="M50 8 L 62 16 L 52 26"/></svg>
+    <div class="fan">
+      <div class="ps"><img src="assets/s1.jpg" alt=""></div>
+      <div class="ps"><img src="assets/s5.jpg" alt=""></div>
+      <div class="ps"><img src="assets/s6.jpg" alt=""></div>
+    </div>
+    <div class="brand">Cookmoji</div>
+  </div>
+  <div class="ig ig-pill" style="left:50%;top:620px;transform:translateX(-50%)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg>cookmoji.app</div>
+</template>
+
+<script>
+(function(){
+  const stories = [
+    {id:'s1', title:'原图', sub:'照片 · 投票', dur:6000, time:'14h',
+     form:'照片', how:'从相册选原图直接发。不加滤镜，原图就是原图。',
+     widgets:['Poll 投票（🥔 / 👻）'], stickers:'不放贴纸',
+     why:'第一条只给原图，让朋友先猜这是什么。投票用两个 emoji 当选项，问题留一个问号，没有一个字。这条的任务是制造悬念，为后面 9 条铺垫。'},
+    {id:'s2', title:'生成', sub:'视频 · 音乐', dur:10000, time:'14h',
+     form:'视频（屏幕录制）', how:'录屏 Cookmoji 的制作过程：选照片、等待、贴纸出现。发布时加 Music 贴纸，歌词模式关掉。',
+     widgets:['Music：Hide and Seek · Imogen Heap'], stickers:'Give me a second. 先出，再带出另外三张',
+     why:'这是整组 Story 的核心：朋友亲眼看到照片变成贴纸。配乐选《Hide and Seek》对应躲在毯子里的梗，用音乐替代解释文字。demo 里的屏幕录制用动画模拟。'},
+    {id:'s3', title:'对比', sub:'Layout · 情绪滑杆', dur:6000, time:'13h',
+     form:'Layout（上下两格）', how:'相机里选 Layout，二格模式，上格从相册选原图，下格选贴纸。',
+     widgets:['Emoji slider 情绪滑杆（🫠）'], stickers:"I'm staying right here.",
+     why:'Layout 是 Instagram 自带的并排工具，不需要自己拼图。原图与贴纸同屏，滑杆放在接缝处问「像不像」，朋友滑一下就是反馈。'},
+    {id:'s4', title:'显影', sub:'照片 · Frames', dur:7000, time:'12h',
+     form:'照片（Frames 贴纸）', how:'发一条空底 Story，用 Frames 贴纸贴入原图，写一个日期当相纸标题；再放一张贴纸在旁边。朋友要摇手机才能看到照片显影。',
+     widgets:['Frames 拍立得（摇一摇显影）'], stickers:'Not happening.',
+     why:'Frames 把「看原图」变成一个动作，比直接发原图更有参与感。相纸上的日期是唯一的文字。点 demo 里的相纸模拟摇一摇。'},
+    {id:'s5', title:'接力', sub:'Create · Add Yours', dur:6000, time:'11h',
+     form:'Create 模式', how:'相机里切到 Create，选一个和毯子同色的渐变底，贴一张贴纸，加 Add Yours 贴纸，主题写两个词。',
+     widgets:['Add Yours 接力（blanket era）'], stickers:'That means a lot.',
+     why:'Create 模式不需要照片，底色自己选，正好让贴纸独占画面。Add Yours 是让朋友也去做一套的最短路径：他们点一下就进入发布流程，顺带把 Cookmoji 带出去。'},
+    {id:'s6', title:'用上了', sub:'照片 · 截图', dur:7000, time:'9h',
+     form:'照片（聊天截图）', how:'截一段真实对话，贴纸当回复发出去，截图直接发 Story。不加任何小组件。',
+     widgets:['无'], stickers:"Not happening. / I'm staying right here.",
+     why:'贴纸最终是用在聊天里的，这条展示「用」而不是「做」。对话本身就是文案，再加组件只会抢戏。这是故意留白的一条。'},
+    {id:'s7', title:'提问', sub:'照片 · GIF · @', dur:6000, time:'7h',
+     form:'照片', how:'原图压暗当底，贴纸当照片贴纸放中间，从 GIF 库搜「question」「sparkle」各放一两个，再 @cookmoji.app。',
+     widgets:['GIF 贴纸（问号、星光）','Mention @cookmoji.app'], stickers:"What's going on?",
+     why:'GIF 贴纸替代文字做情绪，问号呼应贴纸的台词。@ 是给 Cookmoji 官方账号转发的机会，也顺便回答「这是哪个 App 做的」。'},
+    {id:'s8', title:'揭晓', sub:'照片 · Reveal', dur:7000, time:'5h',
+     form:'照片（Reveal 贴纸）', how:'发一张贴纸，加 Reveal 贴纸。朋友必须给你发一条私信才能看清。',
+     widgets:['Reveal 私信解锁'], stickers:'Well, I did not expect that.',
+     why:'Reveal 把观看换成私信，是 Story 里最直接的互动入口。选这张贴纸是因为台词本身就是「揭晓」的反应。点 demo 的按钮模拟发消息。'},
+    {id:'s9', title:'复刻', sub:'Hands-free · 定位', dur:10000, time:'3h',
+     form:'Hands-free 视频', how:'相机切 Hands-free，点一下开录，不用按住：再裹一次毯子，照着贴纸的姿势待几秒。发布时把那张贴纸放在角落，加 Location。',
+     widgets:['Location（Shanghai）'], stickers:"I'm staying right here.",
+     why:'Hands-free 只有真人出镜才有意义，所以这条是用自己复刻贴纸：先有贴纸，再有人学贴纸，过程被倒过来讲一遍。demo 用原图缓慢移动代替实拍，发布前需要补拍。'},
+    {id:'s10', title:'入口', sub:'照片 · 链接', dur:7000, time:'1h',
+     form:'照片（Cookmoji 分享卡）', how:'Cookmoji 分享卡改版方向：原图在左、贴纸扇形在右、一笔箭头。导出后发 Story，加 Link 贴纸指向 cookmoji.app。',
+     widgets:['Link 链接贴纸（cookmoji.app）'], stickers:"Give me a second. / Well, I did not expect that. / What's going on?",
+     why:'最后一条收口：把「照片变贴纸」压成一张图，朋友点链接就能去做。这也是今天要改的分享卡本身，Story 里的其他 9 条都可以看作这张卡的拆解。'},
+  ];
+
+  const stage = document.getElementById('stage');
+  const bars = document.getElementById('bars');
+  const list = document.getElementById('list');
+  const detail = document.getElementById('detail');
+  const timeEl = document.getElementById('time');
+  const screen = document.getElementById('screen');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  stories.forEach((s,i)=>{
+    const b=document.createElement('div');b.className='bar';b.innerHTML='<i></i>';bars.appendChild(b);
+    const btn=document.createElement('button');btn.type='button';btn.setAttribute('role','tab');
+    btn.innerHTML='<span class="n">'+(i+1)+'</span><span class="lb">'+s.title+'<small>'+s.sub+'</small></span>';
+    btn.addEventListener('click',()=>go(i));list.appendChild(btn);
+  });
+
+  let cur=-1, start=0, elapsed=0, raf=0, paused=false, holdTimer=0, holding=false;
+
+  function mount(i){
+    stage.innerHTML='';
+    const s=stories[i];
+    const node=document.importNode(document.getElementById(s.id).content,true);
+    const wrap=document.createElement('div');wrap.className='story active';wrap.appendChild(node);
+    stage.appendChild(wrap);
+    wire(wrap);
+  }
+  function wire(root){
+    const poll=root.querySelector('[data-poll]');
+    if(poll){poll.querySelectorAll('.opt').forEach(o=>o.addEventListener('click',e=>{e.stopPropagation();if(poll.classList.contains('voted'))return;poll.classList.add('voted');poll.querySelectorAll('.opt').forEach(x=>x.querySelector('.fill').style.width=x.dataset.pct+'%');poll.querySelector('.meta').textContent='已投票 · 128 人';}));}
+    const sl=root.querySelector('[data-slider]');
+    if(sl){requestAnimationFrame(()=>requestAnimationFrame(()=>{sl.querySelector('.knob').style.left='86%';}));}
+    const fr=root.querySelector('[data-frame]');
+    if(fr){fr.style.cursor='pointer';fr.addEventListener('click',e=>{e.stopPropagation();if(!fr.classList.contains('undeveloped'))return;fr.classList.remove('undeveloped');fr.classList.add('developing');fr.querySelector('.shakehint').remove();});}
+    const rv=root.querySelector('[data-reveal]');
+    if(rv){rv.querySelector('button').addEventListener('click',e=>{e.stopPropagation();root.classList.add('revealed');});}
+    root.querySelectorAll('.ig, .ps').forEach(el=>el.addEventListener('pointerdown',e=>e.stopPropagation()));
+  }
+
+  function go(i){
+    if(i<0)i=0; if(i>=stories.length)i=0;
+    cur=i; elapsed=0; start=performance.now(); paused=false; screen.classList.remove('paused');
+    mount(i);
+    timeEl.textContent=stories[i].time;
+    [...bars.children].forEach((b,k)=>{b.classList.toggle('done',k<i);b.querySelector('i').style.width=k<i?'100%':'0';});
+    [...list.children].forEach((b,k)=>b.setAttribute('aria-current',k===i?'true':'false'));
+    renderDetail(i);
+    cancelAnimationFrame(raf); tick();
+  }
+  function tick(){
+    const s=stories[cur];
+    if(!paused){elapsed=performance.now()-start;}
+    const p=Math.min(1,elapsed/s.dur);
+    bars.children[cur].querySelector('i').style.width=(p*100)+'%';
+    if(p>=1){ if(cur<stories.length-1) go(cur+1); else { paused=true; screen.classList.add('paused'); } return; }
+    raf=requestAnimationFrame(tick);
+  }
+  function setPaused(v){ if(v===paused)return; paused=v; screen.classList.toggle('paused',v); if(!v){start=performance.now()-elapsed;} }
+
+  function renderDetail(i){
+    const s=stories[i];
+    detail.innerHTML=
+      '<div class="eyebrow">Story '+(i+1)+' / '+stories.length+'</div>'+
+      '<h2>'+s.title+'</h2>'+
+      '<dl>'+
+      '<dt>发布形式</dt><dd><span class="chip form">'+s.form+'</span></dd>'+
+      '<dt>怎么发</dt><dd>'+s.how+'</dd>'+
+      '<dt>小组件</dt><dd><span class="chips">'+s.widgets.map(w=>'<span class="chip">'+w+'</span>').join('')+'</span></dd>'+
+      '<dt>用的贴纸</dt><dd>'+s.stickers+'</dd>'+
+      '</dl>'+
+      '<div class="why">'+s.why+'</div>';
+  }
+
+  // tap / hold
+  function bindZone(el,dir){
+    el.addEventListener('pointerdown',e=>{holding=false;holdTimer=setTimeout(()=>{holding=true;setPaused(true);},180);});
+    el.addEventListener('pointerup',e=>{clearTimeout(holdTimer);if(holding){setPaused(false);holding=false;return;} go(cur+dir);});
+    el.addEventListener('pointerleave',()=>{clearTimeout(holdTimer);if(holding){setPaused(false);holding=false;}});
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+  bindZone(document.getElementById('tapL'),-1);
+  bindZone(document.getElementById('tapR'),1);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight')go(cur+1); else if(e.key==='ArrowLeft')go(cur-1);
+    else if(e.key===' '){e.preventDefault();setPaused(!paused);}
+  });
+  document.querySelector('.hdr .x').addEventListener('click',()=>go(0));
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) setPaused(true); });
+  if(reduced){ stories.forEach(s=>s.dur=Math.max(s.dur,12000)); }
+
+  // scale the fixed 393×852 phone to the column
+  const fit=document.getElementById('fit'), phone=document.getElementById('phone');
+  function fitPhone(){const k=Math.min(1,fit.clientWidth/393);phone.style.transform='scale('+k+')';fit.style.height=(852*k)+'px';}
+  new ResizeObserver(fitPhone).observe(fit); fitPhone();
+
+  // keep place across republishes
+  const boot=(data)=>go(Number.isInteger(data&&data.cur)?data.cur:0);
+  if(window.claude&&window.claude.hot){ window.claude.hot.snapshot&&window.claude.hot.snapshot(()=>({cur})); window.claude.hot.ready?window.claude.hot.ready(boot):boot(window.claude.hot.data||{}); }
+  else boot({});
+})();
+</script>
+
+</body>
+</html>
