@@ -11,3 +11,7 @@ Cookmoji 的 10 个 Instagram Story 手机界面 demo，展示同一张原图如
 GitHub Pages 使用 main 分支根目录发布，更新 index.html 后自动重新部署。
 
 音乐仅为选曲建议，未嵌入歌曲录音；Hands-free 方案为动作分镜，发布前需补拍。所有互动仅在 demo 中演示，不向 Instagram 发送或发布内容。
+
+## brownout-stories.html
+
+第二版：模拟手机上的 Story 查看器，10 条 The Great Brownout Story 按一个人一天发的顺序排列，图片在 `assets/`。地址：https://joyouyang.github.io/InsStoryCard/brownout-stories.html
