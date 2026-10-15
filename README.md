@@ -1,1 +1,13 @@
 # InsStoryCard
+
+Cookmoji 的 10 个 Instagram Story 手机界面 demo，展示同一张原图如何变成一套表情包，以及不同的 Story 发布玩法。
+
+- 照片、视频、Create、Layout 和 Hands-free 五种创作形式。
+- 可体验投票、提问、情绪滑杆、Frames 显影与 Add Yours 接力。
+- 每个方案附制作方式、配乐和滤镜建议。
+
+这是静态网页，index.html 可直接打开，无需安装依赖或构建。图片已内嵌在页面中；图标等界面资源由 CDN 提供。
+
+GitHub Pages 使用 main 分支根目录发布，更新 index.html 后自动重新部署。
+
+音乐仅为选曲建议，未嵌入歌曲录音；Hands-free 方案为动作分镜，发布前需补拍。所有互动仅在 demo 中演示，不向 Instagram 发送或发布内容。
