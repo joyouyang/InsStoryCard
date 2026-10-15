@@ -19,3 +19,7 @@ GitHub Pages 使用 main 分支根目录发布，更新 index.html 后自动重�
 ## brownout-stories-2.html
 
 第二组 10 条：每条都把原图和贴纸放进同一画面，目标是朋友一眼看出贴纸来自这张照片。复用 `assets/`。地址：https://joyouyang.github.io/InsStoryCard/brownout-stories-2.html
+
+## brownout-stories-3.html
+
+第三页，三组切换：翻面实验台（速度 × 1/4/6/9 张 × 5 种特效，三条推荐组合，实验台可任意改）、入口卡 4/6/9 张三条、用后端生产产物（角色描述、画风卡、标题、逐张设计、底稿提示词与模型原文、失败记录）讲制作过程的 10 条。画面里的文字是示例，字段名是真的。复用 `assets/`。地址：https://joyouyang.github.io/InsStoryCard/brownout-stories-3.html
